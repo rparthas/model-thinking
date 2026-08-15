@@ -18,12 +18,22 @@ import random
 
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from matplotlib.colors import ListedColormap
 
 # What a cell can hold. The numbers are just labels; 0/1/2 also happen to be
 # convenient for matplotlib's colour map later on.
 EMPTY = 0
 A = 1
 B = 2
+
+# Empty cells are white, type A is blue, type B is red. Index into this by the
+# cell value, which is why EMPTY/A/B are 0/1/2.
+COLORS = ListedColormap(["white", "#3b6fd4", "#d43b3b"])
+
+
+def show(ax, grid):
+    """Draw a grid on a matplotlib axis using the shared colour scheme."""
+    return ax.imshow(grid, cmap=COLORS, vmin=0, vmax=2)
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +224,7 @@ def animate(tolerance=0.4, size=50, out="schelling.gif"):
     history = run(make_grid(size), tolerance)
     fig, ax = plt.subplots(figsize=(5, 5))
     ax.axis("off")
-    image = ax.imshow(history[0], cmap="coolwarm", vmin=0, vmax=2)
+    image = show(ax, history[0])
     title = ax.set_title("")
 
     def draw(i):
@@ -245,7 +255,7 @@ def sweep(tolerances=(0.2, 0.3, 0.4, 0.5, 0.6), size=50,
         curve = [segregation(g) for g in history]
         finals[t] = curve[-1]
 
-        axes[0, i].imshow(history[-1], cmap="coolwarm", vmin=0, vmax=2)
+        show(axes[0, i], history[-1])
         axes[0, i].axis("off")
         axes[0, i].set_title(f"tolerance {t:.0%}\n"
                              f"segregation {curve[-1]:.0%} "
@@ -260,6 +270,67 @@ def sweep(tolerances=(0.2, 0.3, 0.4, 0.5, 0.6), size=50,
     fig.savefig(out, dpi=110)
     plt.close(fig)
     return finals
+
+
+def figure_happiness_rule(out="schelling_rule.png"):
+    """Draw three small neighborhoods and whether their centre agent is happy.
+
+    Used by schelling_explained.md to show the happiness rule on cases small
+    enough to count by hand.
+    """
+    cases = [
+        [[A, A, B], [B, A, EMPTY], [A, EMPTY, B]],
+        [[B, B, B], [B, A, EMPTY], [A, EMPTY, B]],
+        [[B, B, EMPTY], [B, A, EMPTY], [EMPTY, EMPTY, EMPTY]],
+    ]
+    fig, axes = plt.subplots(1, len(cases), figsize=(3.4 * len(cases), 4.4))
+    for ax, cells in zip(axes, cases):
+        show(ax, cells)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for r in range(3):
+            for c in range(3):
+                name = {EMPTY: "", A: "A", B: "B"}[cells[r][c]]
+                bold = "bold" if (r, c) == (1, 1) else "normal"
+                colour = "white" if cells[r][c] != EMPTY else "black"
+                ax.text(c, r, name, ha="center", va="center", color=colour,
+                        fontsize=16, fontweight=bold)
+        # Outline the centre agent — the one whose happiness we are judging.
+        ax.add_patch(plt.Rectangle((0.5, 0.5), 1, 1, fill=False,
+                                   edgecolor="black", linewidth=3))
+        # Count the same way the model does, so the caption cannot drift from
+        # the rule: occupied neighbors only, empty cells ignored.
+        occupied = [n for n in neighbors(cells, 1, 1) if n != EMPTY]
+        same = sum(1 for n in occupied if n == cells[1][1])
+        share = same_type_share(cells, 1, 1)
+        verdict = "happy" if not is_unhappy(cells, 1, 1, 0.4) else "UNHAPPY"
+        ax.set_title(f"{same} of {len(occupied)} neighbors match\n"
+                     f"share = {share:.0%}\n"
+                     f"at 40% tolerance: {verdict}", fontsize=11)
+    fig.suptitle("The happiness rule, judged for the outlined centre agent "
+                 "(white = empty)", fontsize=13)
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    fig.savefig(out, dpi=110)
+    plt.close(fig)
+    return out
+
+
+def figure_before_after(tolerance=0.4, size=50, out="schelling_before_after.png"):
+    """Start grid next to its equilibrium, for the same run."""
+    history = run(make_grid(size), tolerance)
+    fig, axes = plt.subplots(1, 2, figsize=(9, 5))
+    for ax, g, label in ((axes[0], history[0], "round 0: random"),
+                         (axes[1], history[-1],
+                          f"round {len(history) - 1}: equilibrium")):
+        show(ax, g)
+        ax.axis("off")
+        ax.set_title(f"{label}\nsegregation {segregation(g):.0%}")
+    fig.suptitle(f"No agent wanted this. Each only asked that {tolerance:.0%} "
+                 f"of its neighbors match.", fontsize=12)
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    fig.savefig(out, dpi=110)
+    plt.close(fig)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -307,4 +378,5 @@ if __name__ == "__main__":
         bar = "#" * round(s * 40)
         print(f"tolerance {t:.0%}  segregation {s:>4.0%}  {bar}")
 
-    print("\nanimation written to", animate())
+    for path in (animate(), figure_happiness_rule(), figure_before_after()):
+        print("wrote", path)
