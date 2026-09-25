@@ -10,12 +10,12 @@ Dependencies are managed with [uv](https://docs.astral.sh/uv/). `uv run` creates
 
 ### Module 1 — Segregation and Peer Effects
 
-Schelling's segregation model, in [`segregation_simulator.py`](segregation_simulator.py).
+Schelling's segregation model, in [`1.schelling-model/segregation_simulator.py`](1.schelling-model/segregation_simulator.py).
 
 A grid holds two types of agents plus empty cells. An agent sees only its eight surrounding cells and is happy when at least `tolerance` of its occupied neighbors share its type. Each round, every unhappy agent relocates to a random empty cell. The simulation runs until nobody wants to move.
 
 ```bash
-uv run python segregation_simulator.py
+uv run python 1.schelling-model/segregation_simulator.py
 ```
 
 That prints a round-by-round trace of one run and writes four figures:
@@ -27,7 +27,7 @@ That prints a round-by-round trace of one run and writes four figures:
 | `schelling.gif` | every round in between |
 | `schelling_sweep.png` | final grids and segregation-over-time curves for all five tolerances |
 
-![Before and after](schelling_before_after.png)
+![Before and after](1.schelling-model/schelling_before_after.png)
 
 Segregation is measured as the mean share of same-type neighbors across all agents — read it as "the typical agent's neighborhood is X% people like them." A randomly mixed grid scores about 50%, and every run starts there.
 
@@ -41,4 +41,26 @@ Segregation is measured as the mean share of same-type neighbors across all agen
 
 The insight is the 30% row. Those agents are happy being a small minority — none of them wants a neighborhood of its own type, and none can even perceive the grid beyond its eight neighbors — yet they settle into a map where the typical neighborhood is three-quarters one type. Segregation here is nobody's preference; it is what the individual moves add up to. Macro patterns are not scaled-up micro preferences, which means you cannot read people's preferences off the outcome they collectively produce.
 
-**[schelling_explained.md](schelling_explained.md) is the full walkthrough**: the rules in detail, why the code is structured the way it is, how to read the results, five experiments to try, and what the model deliberately leaves out.
+**[schelling_explained.md](1.schelling-model/schelling_explained.md) is the full walkthrough**: the rules in detail, why the code is structured the way it is, how to read the results, five experiments to try, and what the model deliberately leaves out.
+
+### Module 2 — Aggregation and Decision Models
+
+Multi-criteria decision engine with value of information, in [`2.decision/decision_engine.py`](2.decision/decision_engine.py).
+
+Score alternatives on weighted criteria (compensation, growth, technical depth, …). Some cells stay uncertain as probability-weighted scenarios. The script ranks options on expected scores, then estimates **which unknown would most improve the decision** if you learned it before committing — with suggested questions to ask.
+
+```bash
+uv run python 2.decision/decision_engine.py
+```
+
+That runs a self-check, prints a job-choice report, and writes three figures:
+
+| File | Shows |
+|------|-------|
+| `decision_ranking.png` | Expected weighted scores for each offer |
+| `decision_voi.png` | Expected gain from perfect information per unknown |
+| `decision_breakdown.png` | How the leading offer’s score splits across criteria |
+
+The insight is not “compute a weighted sum.” It is that **acting on averages can hide flip points** — resolving the right unknown (here, startup technical scope) has measurable expected value even when the safe offer leads today.
+
+**[decision_explained.md](2.decision/decision_explained.md)** covers the rules, the job example, how to reuse the API, and experiments to try.
